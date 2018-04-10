@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,7 +16,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var namespace = "wasabi"
+func _getEnv(key string, fallback string) string {
+	if val, exists := os.LookupEnv(key); exists {
+		return val
+	}
+
+	return fallback
+}
+
+var namespace = _getEnv("NAMESPACE", "webcontainers")
+var ident = _getEnv("IDENT", "wasabi")
 
 func main() {
 	config, err := rest.InClusterConfig()
@@ -66,7 +76,7 @@ func main() {
 
 		img := string(secret.Data["image"])
 		now := time.Now().Unix()
-		jobName := fmt.Sprintf("%s-%d", "wasabi", now)
+		jobName := fmt.Sprintf("%s-%d", ident, now)
 		config := map[string]interface{}{}
 
 		for k, v := range secret.Data {
@@ -109,7 +119,7 @@ func main() {
 		}
 
 		container := coreV1.Container{
-			Name:  "wasabi-runtime",
+			Name:  fmt.Sprintf("%s-%s", ident, "runtime"),
 			Image: img,
 			Args:  args,
 			Env:   envVars,
